@@ -1,0 +1,74 @@
+﻿@page "/"
+@page "/index"
+
+@layout BlankLayout
+@inject NavigationManager navMgr
+@implements IDisposable
+
+@using System.Timers
+
+<div class="blur_body">
+    <section class="bg" style="@filtering"></section>
+    <div class="loading-text" style="@opcityFilter">@LoadCounter%</div>
+</div>
+
+
+@code
+{
+    private int Value = 0;
+    private Timer timer;
+    private int LoadCounter = 0;
+    private decimal opacity = 0;
+    private decimal filter = 30;
+    private string filtering = "filter: blur(0px)";
+    private string opcityFilter = "";
+
+    private async Task IncrementCount()
+    {
+        LoadCounter++;
+        opacity = Scale(LoadCounter, 0, 100, 1, 0);
+        var temp = 1 - ((decimal)LoadCounter / 100);
+        opcityFilter = $"opacity: {temp};";
+        filter = Scale(LoadCounter, 0, 100, 30, 0);
+        filtering = $"filter: blur({filter}px)";
+        if (LoadCounter > 99)
+        {
+            timer.Stop();
+            //pause for effect
+            await Task.Delay(1000);
+            navMgr.NavigateTo("/home");
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            timer = new Timer();
+            timer.Interval = 30;
+            timer.Elapsed += OnTimerInterval;
+            timer.AutoReset = true;
+            // Start the timer
+            timer.Enabled = true;
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    private void OnTimerInterval(object sender, ElapsedEventArgs e)
+    {
+        IncrementCount();
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        // During prerender, this component is rendered without calling OnAfterRender and then immediately disposed
+        // this mean timer will be null so we have to check for null or use the Null-conditional operator ?
+        timer?.Dispose();
+    }
+
+    private decimal Scale(int num, int in_min, int in_max, int out_min, int out_max)
+    {
+        return ((num - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+    }
+}
